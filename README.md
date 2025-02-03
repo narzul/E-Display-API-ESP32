@@ -1,6 +1,6 @@
 # Rejseplanen E-Paper Display
 
-NOTE: I have started a new project wherein I will do more in depth tests with the WeAct display. Star (Still-in-Motion)[https://github.com/QC20/still-in-motion] to stay updated.
+**NOTE**: I have started a new project wherein I will do more in depth tests with the WeAct display. Star (Still-in-Motion)[https://github.com/QC20/still-in-motion] to stay updated.
 
 This project is a creative implementation of a **Rejseplanen** bus and train schedule display using an ESP32 and an E-Paper screen. The idea is to emulate the look and functionality of the actual bus stop displays found in Denmark, but in a compact, energy-efficient form. The E-Paper display updates at regular intervals (once every minute) to show the latest bus and train schedules.
 
