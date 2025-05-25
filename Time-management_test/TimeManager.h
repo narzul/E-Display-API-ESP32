@@ -1,10 +1,10 @@
 /*
 * TimeManager.h
 * Made by Jonas Kjeldmnd Jensen (Yunus), September 2024
-* Extended for time management functionality
+* Extended with smart time management functionality
 *
-* This header provides time fetching and management capabilities
-* for the ESP32 weather display project
+* This header provides comprehensive time fetching and management capabilities
+* for the ESP32 weather display project with efficient NTP syncing
 */
 
 #ifndef TIME_MANAGER_H
@@ -14,12 +14,25 @@
 #include <time.h>
 #include <sys/time.h>
 
-// NTP server configuration
-const char* ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 3600;        // GMT+1 for Copenhagen (adjust as needed)
-const int daylightOffset_sec = 3600;    // Daylight saving time offset
+// =========================
+// NTP CONFIGURATION
+// =========================
 
-// Structure to store time information
+// NTP server configuration
+extern const char* ntpServer;
+extern const long gmtOffset_sec;        // GMT offset in seconds (3600 = GMT+1)
+extern const int daylightOffset_sec;    // Daylight saving time offset
+
+// Timing intervals
+extern const unsigned long NTP_SYNC_INTERVAL;      // How often to re-sync NTP (12 hours)
+extern const unsigned long WEATHER_UPDATE_INTERVAL; // How often to update weather (10 minutes)
+extern const unsigned long DISPLAY_UPDATE_INTERVAL; // How often to update display (30 seconds)
+
+// =========================
+// TIME STRUCTURES
+// =========================
+
+// Structure to store complete time information
 struct TimeInfo {
   int year;
   int month;
@@ -30,18 +43,54 @@ struct TimeInfo {
   time_t timestamp;  // Unix timestamp for easy calculations
 };
 
-// Function declarations
+// Structure to store weather data with timestamp
+struct WeatherData {
+  String cityName;
+  float temperature;
+  String description;
+  bool valid;
+  TimeInfo fetchTime;  // When this data was fetched
+};
+
+// =========================
+// GLOBAL VARIABLES
+// =========================
+
+extern TimeInfo storedTime;           // Reference time (usually startup time)
+extern WeatherData currentWeather;    // Current weather data with fetch time
+extern bool timeInitialized;          // Whether NTP sync was successful
+extern unsigned long lastNtpSync;     // Last NTP synchronization time
+extern unsigned long lastWeatherUpdate; // Last weather API call
+extern unsigned long lastDisplayUpdate; // Last display refresh
+
+// =========================
+// FUNCTION DECLARATIONS
+// =========================
+
+// Core time functions
 bool initializeTime();
 TimeInfo getCurrentTime();
 TimeInfo getStoredTime();
 void storeCurrentTime();
-int getTimeDifferenceMinutes(TimeInfo time1, TimeInfo time2);
-String formatTime(TimeInfo timeInfo);
-String formatTimeDifference(int minutes);
 bool isTimeValid();
 
-// Global variables
-extern TimeInfo storedTime;
-extern bool timeInitialized;
+// Time calculation functions
+int getTimeDifferenceMinutes(TimeInfo time1, TimeInfo time2);
+int getTimeDifferenceSeconds(TimeInfo time1, TimeInfo time2);
+
+// Time formatting functions
+String formatTime(TimeInfo timeInfo);
+String formatTimeShort(TimeInfo timeInfo);
+String formatTimeDifference(int minutes);
+String formatDate(TimeInfo timeInfo);
+
+// Time management functions
+void checkForNtpSync();
+bool shouldUpdateWeather();
+bool shouldUpdateDisplay();
+
+// Utility functions
+void printTimeStatus();
+unsigned long getUptimeSeconds();
 
 #endif
