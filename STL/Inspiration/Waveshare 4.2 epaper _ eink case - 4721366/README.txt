@@ -1,0 +1,4 @@
+Waveshare 4.2 epaper / eink case by DigitalUrban on Thingiverse: https://www.thingiverse.com/thing:4721366
+
+Summary:
+A case for the 4.2-inch Waveshare Paper screen. The display is using Home Assistant to update the data every five minutes, in this case, data from a Weather Flow Tempest station as well as local rain gauge readings using the Environment Agency API.Setting up an eink screen via Home Assistant using a NodeMCU is probably the easiest route as it allows over the air updates and all the configuration is carried out via Home Assistant. This is part of a wider suite of devices - see https://connected-environments.org/portfolio/enviroclimatedata/The case is made to easily click into place, covering the NodeMCU and thus hiding all the wires. When printing, place the objects flat on the print bed (fusion 360 exported with a slight angle - so simply use your place on bed option in your slicer).
