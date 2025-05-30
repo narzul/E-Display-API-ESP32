@@ -5,5 +5,6 @@
 #define WIFI_UTILS_H
 
 void setupWiFi();
+void maintainWiFi();
 
 #endif
