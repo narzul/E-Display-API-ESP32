@@ -2,14 +2,15 @@
 // Purpose: Contains the logic for getting the current time from an NTP server
 // and displaying it. Separates time tasks from the main program.
 
-#include "time.h"
-#include "WiFiUtils.h"  // Needed for WiFi maintenance
-#include "TimeUtils.h"
+#include <Arduino.h>    // For delay and ESP8266 core functions
+#include <time.h>       // For configTime and getLocalTime
+#include "WiFiUtils.h"  // For maintainWiFi()
+#include "TimeUtils.h"  // Declarations for this module
 
 // NTP server settings
 const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 7200;  // UTC+2 for CEST
-const int   daylightOffset_sec = 0;
+const int   daylightOffset_sec = 0; 
 
 // Set up the NTP connection to get accurate time
 void setupNTP() {

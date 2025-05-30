@@ -1,14 +1,21 @@
-// File: APIUtils.cpp
-// Purpose: Contains the logic for contacting the Rejseplanen API, processing bus
-// arrival data, and sending it to the display module for rendering.
+/* File: APIUtils.cpp
+   Purpose: Implements logic for fetching and processing bus arrival data from the Rejseplanen API
+            for the Arduino Nano ESP32. Handles HTTP requests, JSON parsing, and prepares data
+            for display on a 4.2-inch e-paper display.
+   Author: Jonas Kjeldmand Jensen
+   Date: May 30, 2025
+*/
 
-#include <ESP8266HTTPClient.h>  // HTTP client for ESP8266
-#include <ESP8266WiFi.h>        // For WiFiClient and WiFi
-#include <ArduinoJson.h>        // For JSON parsing
-#include "WiFiUtils.h"          // For WiFi maintenance
-#include "TimeUtils.h"          // For TimeData
-#include "DisplayUtils.h"       // For display functions
-#include "APIUtils.h"           // Declarations for this module
+// Include necessary libraries for ESP32
+#include <WiFiClientSecure.h>  // Secure WiFi client for HTTPS requests
+#include <HTTPClient.h>        // HTTP client for making API calls
+#include <ArduinoJson.h>       // JSON parsing library
+
+// Include custom module headers
+#include "WiFiUtils.h"    // For WiFi connection maintenance
+#include "TimeUtils.h"    // For TimeData structure and time functions
+#include "DisplayUtils.h" // For rendering data on the e-paper display
+#include "APIUtils.h"     // Header file for function declarations
 
 // API details
 const char* apiKey = "9b00b65e-e873-45af-8ff8-47366a137f53";

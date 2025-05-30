@@ -2,7 +2,7 @@
 // Purpose: Contains the logic for connecting to WiFi and ensuring the connection
 // stays active. Separates WiFi tasks from other parts of the program.
 
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
 #include "WiFiUtils.h"
 
 // WiFi credentials
