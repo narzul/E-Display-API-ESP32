@@ -1,20 +1,44 @@
-// File: TimeUtils.h
-// Purpose: Declares tools for getting and showing the current time using NTP.
-// This keeps time-related tasks separate for easy understanding and reuse.
+/* File: TimeUtils.h
+   Purpose: Header file for NTP time synchronization and time utilities for Arduino Nano ESP32.
+            Provides clean interface for getting current time and formatting time data.
+   Author: Jonas Kjeldmand Jensen
+   Date: May 30, 2025
+*/
 
-#ifndef TIME_UTILS_H  // Prevent double inclusion
+#ifndef TIME_UTILS_H
 #define TIME_UTILS_H
 
-// Structure to hold time data (hours, minutes, seconds)
+#include <Arduino.h>
+
+// ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+// ║                                       TIME DATA STRUCTURE                                                         ║
+// ╠═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+// ║                                                                                                                   ║
+// ║  Simple structure to hold time information in a clean, easy-to-use format                                        ║
+// ║  Values of -1 indicate invalid/unsynced time                                                                      ║
+// ║                                                                                                                   ║
+// ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
 struct TimeData {
-  int hours;
-  int minutes;
-  int seconds;
+  int hours;    // 0-23 (24-hour format)
+  int minutes;  // 0-59
+  int seconds;  // 0-59
 };
 
-// Function declarations
+// ╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+// ║                                     FUNCTION DECLARATIONS                                                         ║
+// ╠═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+// ║                                                                                                                   ║
+// ║  setupNTP()               - Initialize NTP time synchronization with Danish timezone                            ║
+// ║  getCurrentTimeFromNTP()  - Get current time from NTP server                                                     ║
+// ║  printTime()              - Print formatted time to Serial monitor                                               ║
+// ║  isTimeValid()            - Check if TimeData contains valid time                                                 ║
+// ║                                                                                                                   ║
+// ╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
 void setupNTP();
 TimeData getCurrentTimeFromNTP();
 void printTime(TimeData time);
+bool isTimeValid(TimeData time);
 
-#endif
+#endif  // TIME_UTILS_H
