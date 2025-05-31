@@ -1,6 +1,10 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include <GxEPD2_BW.h>
+#include <Fonts/FreeMonoBold9pt7b.h>
+#include <Fonts/FreeMonoBold12pt7b.h>
+#include <Fonts/FreeMonoBold18pt7b.h>
 #include "time.h"
 
 // WiFi credentials
@@ -16,11 +20,32 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 7200;  // UTC+2 for CEST
 const int   daylightOffset_sec = 0;
 
+// E-paper display configuration for Arduino Nano ESP32
+// Adjusted pin assignments for Nano ESP32 pinout
+GxEPD2_BW<GxEPD2_420_GDEY042T81, GxEPD2_420_GDEY042T81::HEIGHT> display(GxEPD2_420_GDEY042T81(
+  /*CS=*/   D10,   // Chip Select pin (GPIO 10)
+  /*DC=*/   D9,    // Data/Command pin (GPIO 9)
+  /*RST=*/  D8,    // Reset pin (GPIO 8)
+  /*BUSY=*/ D7     // Busy pin (GPIO 7)
+  // SCK (Serial Clock) is connected to D13 (GPIO 13)
+  // MOSI (Serial Data) is connected to D11 (GPIO 11)
+));
+
 // Time structure
 struct TimeData {
   int hours;
   int minutes;
   int seconds;
+};
+
+// Bus stop information structure
+struct BusStopInfo {
+  String stopId;
+  String stopName;
+  int nextArrivalMinutes;
+  String nextArrivalTime;
+  bool hasRealTime;
+  bool hasValidArrival;
 };
 
 // Filter for JSON parsing to optimize memory usage
@@ -29,6 +54,13 @@ StaticJsonDocument<256> filter;
 void setup() {
   Serial.begin(115200);
   delay(1000);
+
+  // Initialize the e-paper display
+  display.init(115200, true, 50, false);
+  display.setRotation(0); // Portrait orientation
+  
+  // Show startup message
+  showStartupMessage();
 
   // Connect to WiFi
   Serial.print("Connecting to WiFi");
@@ -62,6 +94,9 @@ void setup() {
 
 void loop() {
   static int lastMinute = -1;
+  static unsigned long lastDisplayUpdate = 0;
+  const unsigned long DISPLAY_UPDATE_INTERVAL = 60000; // Update display every minute
+  
   TimeData currentTime = getCurrentTimeFromNTP();
 
   // Process only if time is valid and the minute has changed
@@ -74,12 +109,123 @@ void loop() {
     printTime(currentTime);
 
     // Fetch and process bus arrivals
-    checkBusArrivals(currentTime);
+    BusStopInfo stops[2];
+    checkBusArrivals(currentTime, stops);
+
+    // Update display
+    updateDisplay(currentTime, stops);
+    lastDisplayUpdate = millis();
 
     Serial.println("=================");
   }
 
   delay(100);  // Check 10 times per second to catch minute changes
+}
+
+void showStartupMessage() {
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setFont(&FreeMonoBold18pt7b);
+    display.setTextColor(GxEPD_BLACK);
+    
+    int16_t tbx, tby; 
+    uint16_t tbw, tbh;
+    String msg = "Bus Tracker";
+    display.getTextBounds(msg.c_str(), 0, 0, &tbx, &tby, &tbw, &tbh);
+    uint16_t x = ((display.width() - tbw) / 2) - tbx;
+    uint16_t y = (display.height() / 2) - tby;
+    
+    display.setCursor(x, y);
+    display.print(msg);
+    
+    display.setFont(&FreeMonoBold12pt7b);
+    String msg2 = "Starting...";
+    display.getTextBounds(msg2.c_str(), 0, 0, &tbx, &tby, &tbw, &tbh);
+    x = ((display.width() - tbw) / 2) - tbx;
+    y += 50;
+    display.setCursor(x, y);
+    display.print(msg2);
+    
+  } while (display.nextPage());
+}
+
+void updateDisplay(TimeData currentTime, BusStopInfo stops[2]) {
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    
+    // Display title and current time
+    display.setFont(&FreeMonoBold18pt7b);
+    int16_t tbx, tby; 
+    uint16_t tbw, tbh;
+    String title = "Bus 1A Arrivals";
+    display.getTextBounds(title.c_str(), 0, 0, &tbx, &tby, &tbw, &tbh);
+    uint16_t x = ((display.width() - tbw) / 2) - tbx;
+    uint16_t y = 40;
+    display.setCursor(x, y);
+    display.print(title);
+    
+    // Display current time
+    display.setFont(&FreeMonoBold12pt7b);
+    String timeStr = String(currentTime.hours < 10 ? "0" : "") + String(currentTime.hours) + ":" +
+                     String(currentTime.minutes < 10 ? "0" : "") + String(currentTime.minutes);
+    display.getTextBounds(timeStr.c_str(), 0, 0, &tbx, &tby, &tbw, &tbh);
+    x = ((display.width() - tbw) / 2) - tbx;
+    y += 40;
+    display.setCursor(x, y);
+    display.print(timeStr);
+    
+    // Draw separator line
+    y += 20;
+    display.drawLine(20, y, display.width() - 20, y, GxEPD_BLACK);
+    y += 30;
+    
+    // Display bus stop information
+    for (int i = 0; i < 2; i++) {
+      displayBusStopInfo(stops[i], y);
+      y += 80; // Space between stops
+    }
+    
+  } while (display.nextPage());
+}
+
+void displayBusStopInfo(BusStopInfo stop, uint16_t startY) {
+  display.setFont(&FreeMonoBold12pt7b);
+  
+  // Stop name (truncated if too long)
+  String displayName = stop.stopName;
+  if (displayName.length() > 25) {
+    displayName = displayName.substring(0, 22) + "...";
+  }
+  
+  display.setCursor(10, startY);
+  display.print(displayName);
+  
+  // Next arrival info
+  display.setFont(&FreeMonoBold9pt7b);
+  uint16_t y = startY + 25;
+  
+  if (stop.hasValidArrival && stop.nextArrivalMinutes <= 60 && stop.nextArrivalMinutes >= 0) {
+    if (stop.nextArrivalMinutes == 0) {
+      display.setCursor(10, y);
+      display.print("Arriving NOW!");
+    } else {
+      display.setCursor(10, y);
+      display.print("In " + String(stop.nextArrivalMinutes) + " minutes");
+    }
+    
+    y += 20;
+    display.setCursor(10, y);
+    display.print("At " + stop.nextArrivalTime);
+    display.print(stop.hasRealTime ? " (RT)" : " (SCH)");
+  } else {
+    display.setCursor(10, y);
+    display.print("No arrivals in next hour");
+  }
 }
 
 // Get current time from NTP with error handling
@@ -132,7 +278,11 @@ void printTime(TimeData time) {
 }
 
 // Check bus arrivals from Rejseplanen API and calculate countdown
-void checkBusArrivals(TimeData currentTime) {
+void checkBusArrivals(TimeData currentTime, BusStopInfo stops[2]) {
+  // Initialize stop information
+  stops[0] = {"1550", "Gammel Kongevej (H.C. Orsteds Vej)", 1440*2, "", false, false};
+  stops[1] = {"1583", "Gammel Kongevej (Alhambravej)", 1440*2, "", false, false};
+  
   // Extract current date and time for API
   struct tm timeinfo;
   if (!getLocalTime(&timeinfo)) {
@@ -169,22 +319,9 @@ void checkBusArrivals(TimeData currentTime) {
     String payload = http.getString();
     Serial.print("Payload size (bytes): ");
     Serial.println(payload.length());
-    Serial.print("Raw JSON snippet (first 100 chars): ");
-    Serial.println(payload.substring(0, 100));
 
-    // Set memory for JSON parsing
-    // This line sets the memory size to 4096 bytes, which is enough for most bus arrival data from the API
+    // Parse JSON
     StaticJsonDocument<4096> doc;
-    // OPTION 1: Use 2048 bytes instead
-    // Why: Saves memory on devices with less space (e.g., Arduino Uno), but might fail if the API sends lots of data
-    // How to test: Uncomment this, upload the code, and check Serial for "JSON parsing error"
-    // StaticJsonDocument<2048> doc;
-    // OPTION 2: Use 1024 bytes for very low memory
-    // Why: Good for tiny devices, but very likely to fail if many bus arrivals are in the response
-    // How to test: Uncomment this, watch Serial for errors, and increase size if needed
-    // StaticJsonDocument<1024> doc;
-
-    // Parse JSON with filter
     DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
     if (error) {
       Serial.print("JSON parsing error: ");
@@ -197,18 +334,6 @@ void checkBusArrivals(TimeData currentTime) {
     JsonArray arrivals = doc["Arrival"];
     Serial.print("Number of arrivals processed: ");
     Serial.println(arrivals.size());
-
-    // Initialize variables for next arrivals
-    int nextTime1550 = 1440 * 2;  // Max minutes for two days
-    String nextArrival1550;
-    bool hasRealTime1550 = false;
-    int nextTime1583 = 1440 * 2;
-    String nextArrival1583;
-    bool hasRealTime1583 = false;
-
-    // Define stop names
-    String stopName1550 = "Gammel Kongevej (H.C. Ørsteds Vej)";
-    String stopName1583 = "Gammel Kongevej (Alhambravej)";
 
     for (JsonObject arrival : arrivals) {
       String stopExtId = arrival["stopExtId"].as<String>();
@@ -233,65 +358,39 @@ void checkBusArrivals(TimeData currentTime) {
         arrivalTotalMinutes += 1440;  // Add a day's worth of minutes
       }
 
-      // Find the earliest arrival after current time
+      // Find the earliest arrival after current time for each stop
       if (arrivalTotalMinutes >= currentMinutes) {
-        if (stopExtId == "1550" && arrivalTotalMinutes < nextTime1550) {
-          nextTime1550 = arrivalTotalMinutes;
-          nextArrival1550 = arrivalDate + " " + arrivalTime;
-          hasRealTime1550 = hasRealTime;
-        } else if (stopExtId == "1583" && arrivalTotalMinutes < nextTime1583) {
-          nextTime1583 = arrivalTotalMinutes;
-          nextArrival1583 = arrivalDate + " " + arrivalTime;
-          hasRealTime1583 = hasRealTime;
+        int stopIndex = (stopExtId == "1550") ? 0 : 1;
+        if (arrivalTotalMinutes < stops[stopIndex].nextArrivalMinutes) {
+          stops[stopIndex].nextArrivalMinutes = arrivalTotalMinutes - currentMinutes;
+          stops[stopIndex].nextArrivalTime = arrivalTime;
+          stops[stopIndex].hasRealTime = hasRealTime;
+          stops[stopIndex].hasValidArrival = true;
         }
       }
     }
 
-    // Display formatted results in a clear window
+    // Display formatted results in Serial
     Serial.println("────────── Next Bus Arrivals ──────────");
-
-    // Stop 1583
-    Serial.print("Bus stoppested: ");
-    Serial.println(stopName1583);
-    int diff1583 = nextTime1583 - currentMinutes;
-    if (nextTime1583 < 1440 * 2 && diff1583 <= 60 && diff1583 >= 0) {
-      if (diff1583 == 0) {
-        Serial.println("  Next bus (line 1A) is arriving now!");
+    for (int i = 0; i < 2; i++) {
+      Serial.print("Bus stoppested: ");
+      Serial.println(stops[i].stopName);
+      
+      if (stops[i].hasValidArrival && stops[i].nextArrivalMinutes <= 60 && stops[i].nextArrivalMinutes >= 0) {
+        if (stops[i].nextArrivalMinutes == 0) {
+          Serial.println("  Next bus (line 1A) is arriving now!");
+        } else {
+          Serial.print("  Next bus (line 1A) will be here in +");
+          Serial.print(stops[i].nextArrivalMinutes);
+          Serial.println(" minutes");
+        }
+        Serial.print("    (Arrives ");
+        Serial.print(stops[i].nextArrivalTime);
+        Serial.print(stops[i].hasRealTime ? " - real-time estimate)" : " - scheduled estimate)");
+        Serial.println();
       } else {
-        Serial.print("  Next bus (line 1A) will be here in +");
-        Serial.print(diff1583);
-        Serial.println(" minutes");
+        Serial.println("  Ingen busser ankommer indenfor den næste time.");
       }
-      Serial.print("    (Arrives ");
-      Serial.print(nextArrival1583);
-      Serial.print(hasRealTime1583 ? " - real-time estimate)" : " - scheduled estimate)");
-      Serial.println();
-    } else if (nextTime1583 >= 1440 * 2 || diff1583 > 60) {
-      Serial.println("  Ingen busser ankommer indenfor den næste time.");
-    } else {
-      Serial.println("  Next bus (line 1A) may have just passed, checking next...");
-    }
-
-    // Stop 1550
-    Serial.print("Bus stoppested: ");
-    Serial.println(stopName1550);
-    int diff1550 = nextTime1550 - currentMinutes;
-    if (nextTime1550 < 1440 * 2 && diff1550 <= 60 && diff1550 >= 0) {
-      if (diff1550 == 0) {
-        Serial.println("  Next bus (line 1A) is arriving now!");
-      } else {
-        Serial.print("  Next bus (line 1A) will be here in +");
-        Serial.print(diff1550);
-        Serial.println(" minutes");
-      }
-      Serial.print("    (Arrives ");
-      Serial.print(nextArrival1550);
-      Serial.print(hasRealTime1550 ? " - real-time estimate)" : " - scheduled estimate)");
-      Serial.println();
-    } else if (nextTime1550 >= 1440 * 2 || diff1550 > 60) {
-      Serial.println("  Ingen busser ankommer indenfor den næste time.");
-    } else {
-      Serial.println("  Next bus (line 1A) may have just passed, checking next...");
     }
     Serial.println("───────────────────────────────────────");
   } else {
