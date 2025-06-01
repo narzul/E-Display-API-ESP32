@@ -29,8 +29,8 @@ const int EPD_BUSY_PIN = D7;  // Busy pin (GPIO10 on Nano ESP32)
 
 // IMPORTANT: For SPI communication, you MUST also connect the following E-paper pins
 // to the Nano ESP32's default SPI pins (which are not explicitly defined here but used by the library):
-// E-paper CLK (SCK)   -> Arduino Nano ESP32 D12 (GPIO47)
-// E-paper DIN (MOSI)  -> Arduino Nano ESP32 D11 (GPIO38)
+// E-paper SCL (SCK)   -> Arduino Nano ESP32 D12 (GPIO47)
+// E-paper SDA (MOSI)  -> Arduino Nano ESP32 D11 (GPIO38)
 // E-paper GND         -> Arduino Nano ESP32 GND
 // E-paper VCC         -> Arduino Nano ESP32 3V3
 
@@ -47,8 +47,8 @@ GxEPD2_BW<GxEPD2_420_GDEY042T81, GxEPD2_420_GDEY042T81::HEIGHT> display(GxEPD2_4
 // -------------------------------------------------------------------
 
 // WiFi credentials
-const char* ssid = "Fibernet-60713347"; // Your WiFi SSID
-const char* password = "f5567r6k";     // Your WiFi Password
+const char* ssid = "Yunes"; // Your WiFi SSID
+const char* password = "123456789";     // Your WiFi Password
 
 // API details
 const char* apiKey = "9b00b65e-e873-45af-8ff8-47366a137f53"; // Your Rejseplanen API key
